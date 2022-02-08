@@ -1,0 +1,55 @@
+EcsTaskExecutionRole
+- AmazonECSTaskExecutionRolePolicy
+- SecretsManagerReadOnly
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "ReadOnlyOnSecretsManager",
+            "Effect": "Allow",
+            "Action": [
+                "secretsmanager:GetSecretValue"
+            ],
+            "Resource": [
+                "arn:aws:secretsmanager:sa-east-1:XXXXXXXXXX:secret:*"
+            ]
+        }
+    ]
+}
+
+EcsTaskRole
+- CloudWatchAgentServerPolicy
+- EcsExecuteCommandTaskRolePolicy
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "EcsExecuteCommand",
+            "Effect": "Allow",
+            "Action": [
+                "ssmmessages:CreateControlChannel",
+                "ssmmessages:CreateDataChannel",
+                "ssmmessages:OpenControlChannel",
+                "ssmmessages:OpenDataChannel"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
+
+- SecretsManagerReadOnly
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "ReadOnlyOnSecretsManager",
+            "Effect": "Allow",
+            "Action": [
+                "secretsmanager:GetSecretValue"
+            ],
+            "Resource": [
+                "arn:aws:secretsmanager:sa-east-1:XXXXXXXXXX:secret:*"
+            ]
+        }
+    ]
+}

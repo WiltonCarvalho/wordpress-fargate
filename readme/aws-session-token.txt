@@ -1,0 +1,6 @@
+sts=$(aws --profile dev sts get-session-token --duration-seconds 900 --output text --query 'Credentials.[AccessKeyId,SecretAccessKey,SessionToken]')
+sts=($sts)
+export AWS_ACCESS_KEY_ID=${sts[0]}
+export AWS_SECRET_ACCESS_KEY=${sts[1]}
+export AWS_SESSION_TOKEN=${sts[2]}
+docker-compose up

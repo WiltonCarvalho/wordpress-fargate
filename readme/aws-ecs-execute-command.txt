@@ -1,0 +1,11 @@
+curl -sSL "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb" -o "/tmp/session-manager-plugin.deb"
+
+sudo dpkg -i /tmp/session-manager-plugin.deb
+
+aws --profile dev ecs update-service --cluster lab-wilton --service test --region sa-east-1 --enable-execute-command --force-new-deployment
+
+aws --profile dev ecs list-tasks --cluster lab-wilton --service test2 --region sa-east-1 --query 'taskArns[*]' --output yaml
+
+aws --profile dev ecs execute-command --region sa-east-1 --cluster lab-wilton --task 5070e401ff2b4faf8fa0b679ee311a58 --container busybox --command "ash" --interactive
+
+aws --profile dev ecs execute-command --region sa-east-1 --cluster lab-wilton --task 5070e401ff2b4faf8fa0b679ee311a58 --container httpd --command "bash" --interactive

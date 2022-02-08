@@ -1,0 +1,128 @@
+networks:
+  proxy_net:
+    external: false
+  php_net:
+    external: false
+  db_net:
+    external: false
+services:
+  proxy:
+    build:
+      dockerfile: Dockerfile.nginx
+      context: .
+    environment:
+      - update=3
+      - TZ=America/Sao_Paulo
+      - BACKEND=apache:8080
+    ports:
+      - 80:80
+      - 443:443
+    deploy:
+      mode: replicated
+      replicas: 1
+      resources:
+        limits:
+          cpus: '0.80'
+          memory: 64M
+        reservations:
+          memory: 64M
+    restart: unless-stopped
+    networks:
+      - proxy_net
+  apache:
+    build:
+      dockerfile: Dockerfile.apache
+      context: .
+    stop_signal: SIGWINCH
+    volumes:
+      - $PWD/site1:/var/www/html
+      - $PWD/apache-fpm_docker-compose.conf:/etc/apache2/conf-enabled/php-fpm.conf
+      - $PWD/php-test-files/info.php:/var/www/html/info.php
+      - $PWD/php-test-files/ip.php:/var/www/html/ip.php
+      - $PWD/php-test-files/db.php:/var/www/html/db.php
+    environment:
+      - update=1
+      - TZ=America/Sao_Paulo
+    # ports:
+    #   - 8080:8080
+    deploy:
+      mode: replicated
+      replicas: 1
+      resources:
+        limits:
+          cpus: '0.80'
+          memory: 256M
+        reservations:
+          memory: 256M
+    restart: unless-stopped
+    networks:
+      - proxy_net
+      - php_net
+    healthcheck:
+      test: 'curl -s -H "User-Agent: HealthCheck" http://localhost:8080/ping || exit 1'
+      start_period: 20s
+      interval: 10s
+      timeout: 3s
+      retries: 2
+  php:
+    build:
+      dockerfile: Dockerfile.php7fpm
+      context: .
+    stop_signal: SIGQUIT
+    volumes:
+      - $PWD/site1:/var/www/html
+      - $PWD/custom_php.ini:/etc/php/7.4/fpm/conf.d/custom_php.ini
+      - $PWD/php-test-files/info.php:/var/www/html/info.php
+      - $PWD/php-test-files/ip.php:/var/www/html/ip.php
+      - $PWD/php-test-files/db.php:/var/www/html/db.php
+      - $HOME/.aws:/.aws:ro
+    environment:
+      update: 3
+      TZ: America/Sao_Paulo
+      DB_HOST: db
+      DB_USER: site1
+      DB_PASS: test
+      DB_NAME: site1db
+      AWS_REGION: "sa-east-1"
+      AWS_SECRETS_NAME: "test-wilton"
+      #AWS_ACCESS_KEY_ID: "$AWS_ACCESS_KEY_ID"
+      #AWS_SECRET_ACCESS_KEY: "$AWS_SECRET_ACCESS_KEY"
+      #AWS_SESSION_TOKEN: "$AWS_SESSION_TOKEN"
+      AWS_PROFILE: "dev"
+      AWS_SHARED_CREDENTIALS_FILE: /.aws/credentials
+      AWS_CONFIG_FILE: /.aws/config
+    deploy:
+      mode: replicated
+      replicas: 1
+      resources:
+        limits:
+          cpus: '0.80'
+          memory: 256M
+        reservations:
+          memory: 256M
+    restart: unless-stopped
+    networks:
+      - php_net
+      - db_net
+    healthcheck:
+      #disable: true
+      test: '/phpsessionclean.sh || exit 0'
+      #test: '/usr/lib/php/sessionclean && echo "clean php session" || exit 0'
+      start_period: 30s
+      interval: 1800s
+      timeout: 10s
+      retries: 2
+  db:
+    image: mariadb
+    environment:
+      MYSQL_ROOT_PASSWORD: test
+      MYSQL_DATABASE: site1db
+      MYSQL_USER: site1
+      MYSQL_PASSWORD: test
+    restart: unless-stopped
+    networks:
+      - db_net
+    volumes:
+      - db_data:/var/lib/mysql
+volumes:
+  db_data: {}

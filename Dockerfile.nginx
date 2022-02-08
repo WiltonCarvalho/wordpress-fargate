@@ -1,0 +1,3 @@
+FROM nginx:stable
+COPY nginx-run.sh /nginx-run.sh
+ENTRYPOINT ["/nginx-run.sh"]

@@ -1,0 +1,69 @@
+curl -sSL https://wordpress.org/latest.tar.gz | tar zxvp -C ./ --one-top-level=site1 --strip-components=1 --no-same-owner
+
+
+### cp site1/wp-config-sample.php site1/wp-config.php
+### site1/wp-config.php - AWS Secrets Manager
+require '/var/www/composer/vendor/autoload.php';
+use Aws\SecretsManager\SecretsManagerClient;
+$client = new SecretsManagerClient(['version'=>'2017-10-17','region'=>$_SERVER["AWS_REGION"]]);
+$result = $client->getSecretValue(['SecretId'=>$_SERVER["AWS_SECRETS_NAME"]]);
+$values = json_decode($result['SecretString'],true);
+$dbuser = $values["username"];
+$dbpass = $values["password"];
+//$dbuser = $_SERVER["DB_USER"];
+//$dbpass = $_SERVER["DB_PASS"];
+$dbhost = $_SERVER["DB_HOST"];
+$dbname = $_SERVER["DB_NAME"];
+
+/** The name of the database for WordPress */
+define( 'DB_NAME', $dbname );
+/** Database username */
+define( 'DB_USER', $dbuser );
+/** Database password */
+define( 'DB_PASSWORD', $dbpass );
+/** Database hostname */
+define( 'DB_HOST', $dbhost );
+
+
+### curl -sSl https://api.wordpress.org/secret-key/1.1/salt/
+define( 'AUTH_KEY',         'put your unique phrase here' );
+define( 'SECURE_AUTH_KEY',  'put your unique phrase here' );
+define( 'LOGGED_IN_KEY',    'put your unique phrase here' );
+define( 'NONCE_KEY',        'put your unique phrase here' );
+define( 'AUTH_SALT',        'put your unique phrase here' );
+define( 'SECURE_AUTH_SALT', 'put your unique phrase here' );
+define( 'LOGGED_IN_SALT',   'put your unique phrase here' );
+define( 'NONCE_SALT',       'put your unique phrase here' );
+
+
+### Working with any hostname and port, add to the end
+//$protocol_scheme = "http://";
+$protocol_scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
+define('DISALLOW_FILE_EDIT', true);
+define('FS_METHOD', 'direct');
+define('WP_HOME', $protocol_scheme . $_SERVER['HTTP_HOST']);
+define('WP_SITEURL', $protocol_scheme . $_SERVER['HTTP_HOST'] . '/');
+define('WP_CONTENT_URL', $protocol_scheme . $_SERVER['HTTP_HOST'] . '/wp-content');
+define('WP_CONTENT_DIR', $_SERVER['DOCUMENT_ROOT'] . '/wp-content');
+define('WP_DEFAULT_THEME', 'twentytwentytwo');
+
+
+### .htaccess
+cat <<'EOF'> site1/.htaccess
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+    RewriteRule ^index\.php$ - [L]
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule . /index.php [L]
+</IfModule>
+EOF
+
+
+### Fix URLs in DB when needed
+mysql -u site1 -ptest
+use site1db;
+select * from wp_options where option_name='siteurl' or option_name='home';
+update wp_options set option_value='http://localhost:8080' where option_name='siteurl';
+update wp_options set option_value='http://localhost:8080' where option_name='home';
