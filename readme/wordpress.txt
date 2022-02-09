@@ -1,8 +1,7 @@
-curl -sSL https://wordpress.org/latest.tar.gz | tar zxvp -C ./ --one-top-level=site1 --strip-components=1 --no-same-owner
+curl -sSL https://wordpress.org/latest.tar.gz | tar zxvp -C /var/www/html --one-top-level=. --strip-components=1 --no-same-owner --no-overwrite-dir
 
-
-### cp site1/wp-config-sample.php site1/wp-config.php
-### site1/wp-config.php - AWS Secrets Manager
+### cp wp-config-sample.php wp-config.php
+### wp-config.php - AWS Secrets Manager
 require '/var/www/composer/vendor/autoload.php';
 use Aws\SecretsManager\SecretsManagerClient;
 $client = new SecretsManagerClient(['version'=>'2017-10-17','region'=>$_SERVER["AWS_REGION"]]);

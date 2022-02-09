@@ -1,0 +1,65 @@
+FROM ubuntu:20.04
+ARG DEBIAN_FRONTEND=noninteractive
+USER root
+RUN set -ex \
+    #&& sed -i "s/archive.ubuntu.com/br.archive.ubuntu.com/g" /etc/apt/sources.list \
+    && apt-get -q update \
+    && apt-get -q -y install --only-upgrade $( apt-get --just-print upgrade | awk 'tolower($4) ~ /.*security.*/ || tolower($5) ~ /.*security.*/ {print $2}' | sort | uniq ) \
+    && apt-get -q -y install --no-install-recommends tzdata ca-certificates curl gosu git \
+        php-fpm php-cli php-pdo php-mbstring php-mysqlnd php-gd php-json php-soap php-xml \
+        php-curl php-imagick php-intl php-opcache php-zip unzip \
+    && rm -rf /var/cache/apt/archives/*.deb /var/cache/apt/archives/partial/*.deb /var/cache/apt/*.bin /var/lib/apt/lists/* || true
+
+RUN set -ex \
+    && sed -i 's|listen = /run/php/php7.4-fpm.sock|listen = 0.0.0.0:9000|' /etc/php/7.4/fpm/pool.d/www.conf \
+    #&& sed -i 's|;access.log.*|access.log = /proc/self/fd/2|' /etc/php/7.4/fpm/pool.d/www.conf \
+    && sed -i 's|;catch_workers_output.*|catch_workers_output = yes|' /etc/php/7.4/fpm/pool.d/www.conf \
+    && sed -i 's|;decorate_workers_output.*|decorate_workers_output = no|' /etc/php/7.4/fpm/pool.d/www.conf \
+    && sed -i 's|;clear_env.*|clear_env = no|' /etc/php/7.4/fpm/pool.d/www.conf \
+    && sed -i 's|;pm.status_path.*|pm.status_path = /status|' /etc/php/7.4/fpm/pool.d/www.conf \
+    && sed -i 's|;ping.path.*|ping.path = /ping|' /etc/php/7.4/fpm/pool.d/www.conf \
+    && sed -i 's|;ping.response.*|ping.response = pong|' /etc/php/7.4/fpm/pool.d/www.conf \
+    && sed -i 's|;log_limit.*|log_limit = 8192|' /etc/php/7.4/fpm/php-fpm.conf \
+    && test -d /run/php || mkdir /run/php \
+    && chgrp -R 0 /run/php /var/lib/php/sessions \
+    && chmod -R g=u /run/php /var/lib/php/sessions \
+    && ln -sf /usr/sbin/php-fpm7.4 /usr/sbin/php-fpm \
+    && ln -sf /proc/self/fd/2 /var/log/php7.4-fpm.log
+
+COPY custom_php.ini /etc/php/7.4/fpm/conf.d/custom_php.ini
+COPY phpsessionclean.sh /phpsessionclean.sh
+COPY run.sh /run.sh
+
+RUN set -ex \
+    && php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" \
+    && php -r "if (hash_file('sha384', 'composer-setup.php') === '906a84df04cea2aa72f40b5f787e49f22d4c2f19492ac310e8cba5b96ac8b64115ac402c8cd292b8a03482574915d1a8') { echo 'Installer verified'; } else { echo 'Installer corrupt'; unlink('composer-setup.php'); } echo PHP_EOL;" \
+    && php composer-setup.php \
+    && php -r "unlink('composer-setup.php');" \
+    && mv composer.phar /usr/local/bin/composer \
+    && test -d /var/www/composer || mkdir -p /var/www/composer \
+    && chgrp -R 0 /var/www/composer \
+    && chmod -R g=u /var/www/composer
+
+USER 1000:0
+
+RUN set -ex \
+    && cd /var/www/composer \
+    && composer -V \
+    && php --ini \
+    && composer require --no-cache --no-plugins --no-scripts aws/aws-sdk-php
+
+USER 0:0
+
+RUN set -ex \
+    && apt-get -q update \
+    && apt-get -q -y install --no-install-recommends less mariadb-client \
+    && rm -rf /var/cache/apt/archives/*.deb /var/cache/apt/archives/partial/*.deb /var/cache/apt/*.bin /var/lib/apt/lists/* || true \
+    && curl -sSl https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar -o /usr/local/bin/wp \
+    && chmod +x /usr/local/bin/wp \
+    && wp --info
+
+COPY wpcli-init.sh /wpcli-init.sh
+
+STOPSIGNAL KILL
+ENV STOPSIGNAL KILL
+ENTRYPOINT ["/wpcli-init.sh"]
