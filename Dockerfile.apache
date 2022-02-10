@@ -18,11 +18,11 @@ RUN set -ex \
     && sed -i 's/^ServerSignature.*/ServerSignature Off/' /etc/apache2/conf-enabled/security.conf \
     && echo 'SecServerSignature " "' > /etc/apache2/conf-enabled/custom.conf \
     && mkdir /var/run/apache2 /var/lock/apache2 || true \
-    && chgrp -R 0 /var/log/apache2 /var/run/apache2 /var/lock/apache2 \
-    && chmod -R g=u /var/log/apache2 /var/run/apache2 /var/lock/apache2 \
+    && echo ok > /var/www/html/index.html \
+    && chgrp -R 0 /var/log/apache2 /var/run/apache2 /var/lock/apache2 /var/www/html \
+    && chmod -R g=u,o= /var/log/apache2 /var/run/apache2 /var/lock/apache2 /var/www/html \
     && ln -sf /proc/self/fd/1 /var/log/apache2/access.log \
-    && ln -sf /proc/self/fd/1 /var/log/apache2/error.log \
-    && echo ok > /var/www/html/index.html
+    && ln -sf /proc/self/fd/1 /var/log/apache2/error.log
 
 ENV APACHE_RUN_DIR /var/run/apache2
 ENV APACHE_RUN_USER www-data

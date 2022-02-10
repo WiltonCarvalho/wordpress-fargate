@@ -5,6 +5,11 @@ networks:
     external: false
   db_net:
     external: false
+
+volumes:
+  db_data: {}
+  www_data: {}
+
 services:
   proxy:
     build:
@@ -37,33 +42,29 @@ services:
     volumes:
       - www_data:/var/www/html
       - $PWD/apache-fpm_docker-compose.conf:/etc/apache2/conf-enabled/php-fpm.conf
-      - $PWD/php-test-files/info.php:/var/www/html/info.php
-      - $PWD/php-test-files/ip.php:/var/www/html/ip.php
-      - $PWD/php-test-files/db.php:/var/www/html/db.php
+      # - $PWD/php-test-files/info.php:/var/www/html/info.php
+      # - $PWD/php-test-files/ip.php:/var/www/html/ip.php
+      # - $PWD/php-test-files/db.php:/var/www/html/db.php
     environment:
       - update=1
       - TZ=America/Sao_Paulo
-    # ports:
-    #   - 8080:8080
     deploy:
-      mode: replicated
-      replicas: 1
       resources:
         limits:
           cpus: '0.80'
-          memory: 256M
+          memory: 128M
         reservations:
-          memory: 256M
+          memory: 128M
     restart: unless-stopped
-    networks:
-      - proxy_net
-      - php_net
     healthcheck:
       test: 'curl -s -H "User-Agent: HealthCheck" http://localhost:8080/ping || exit 1'
       start_period: 20s
       interval: 10s
       timeout: 3s
       retries: 2
+    networks:
+      - proxy_net
+      - php_net
   php:
     build:
       dockerfile: Dockerfile.php7fpm
@@ -71,10 +72,9 @@ services:
     stop_signal: SIGQUIT
     volumes:
       - www_data:/var/www/html
-      - $PWD/custom_php.ini:/etc/php/7.4/fpm/conf.d/custom_php.ini
-      - $PWD/php-test-files/info.php:/var/www/html/info.php
-      - $PWD/php-test-files/ip.php:/var/www/html/ip.php
-      - $PWD/php-test-files/db.php:/var/www/html/db.php
+      # - $PWD/php-test-files/info.php:/var/www/html/info.php
+      # - $PWD/php-test-files/ip.php:/var/www/html/ip.php
+      # - $PWD/php-test-files/db.php:/var/www/html/db.php
       - $HOME/.aws:/.aws:ro
     environment:
       update: 3
@@ -92,18 +92,13 @@ services:
       AWS_SHARED_CREDENTIALS_FILE: /.aws/credentials
       AWS_CONFIG_FILE: /.aws/config
     deploy:
-      mode: replicated
-      replicas: 1
       resources:
         limits:
           cpus: '0.80'
-          memory: 256M
+          memory: 128M
         reservations:
-          memory: 256M
+          memory: 128M
     restart: unless-stopped
-    networks:
-      - php_net
-      - db_net
     healthcheck:
       #disable: true
       test: '/phpsessionclean.sh || exit 0'
@@ -112,27 +107,43 @@ services:
       interval: 1800s
       timeout: 10s
       retries: 2
+    networks:
+      - php_net
+      - db_net
   db:
     image: mariadb
     environment:
+      TZ: America/Sao_Paulo
       MYSQL_ROOT_PASSWORD: test
       MYSQL_DATABASE: site1db
       MYSQL_USER: site1
       MYSQL_PASSWORD: test
+    healthcheck:
+      test: "mysql --connect-timeout=2 -u root -p$$MYSQL_ROOT_PASSWORD -e 'select 1'"
+      start_period: 15s
+      interval: 10s
+      timeout: 3s
+      retries: 2
+    deploy:
+      resources:
+        limits:
+          cpus: '0.80'
+          memory: 128M
+        reservations:
+          memory: 128M
     restart: unless-stopped
     networks:
       - db_net
     volumes:
       - db_data:/var/lib/mysql
   init:
-    depends_on:
-      - db
+    # depends_on:
+    #   db:
+    #     condition: service_healthy
     build:
       dockerfile: Dockerfile.wpcli
       context: .
     stop_signal: SIGKILL
-    volumes:
-      - www_data:/var/www/html
     environment:
       update: 3
       TZ: America/Sao_Paulo
@@ -141,17 +152,14 @@ services:
       DB_PASS: test
       DB_NAME: site1db
     deploy:
-      mode: replicated
-      replicas: 1
       resources:
         limits:
           cpus: '0.80'
-          memory: 256M
+          memory: 64M
         reservations:
-          memory: 256M
+          memory: 64M
     restart: unless-stopped
     networks:
       - db_net
-volumes:
-  db_data: {}
-  www_data: {}
+    volumes:
+      - www_data:/var/www/html

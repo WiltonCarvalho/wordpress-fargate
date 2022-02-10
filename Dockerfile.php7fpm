@@ -52,4 +52,4 @@ STOPSIGNAL SIGQUIT
 ENV STOPSIGNAL QUIT
 EXPOSE 9000
 ENTRYPOINT ["/run.sh"]
-CMD ["/usr/sbin/php-fpm", "-F"]
+CMD ["php-fpm", "-F"]

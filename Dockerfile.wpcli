@@ -58,8 +58,10 @@ RUN set -ex \
     && chmod +x /usr/local/bin/wp \
     && wp --info
 
+COPY run.sh /run.sh
 COPY wpcli-init.sh /wpcli-init.sh
 
 STOPSIGNAL KILL
 ENV STOPSIGNAL KILL
-ENTRYPOINT ["/wpcli-init.sh"]
+ENTRYPOINT ["/run.sh"]
+CMD ["/wpcli-init.sh"]
