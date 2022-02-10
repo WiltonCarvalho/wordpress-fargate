@@ -17,7 +17,7 @@ RUN set -ex \
     && sed -i 's/^ServerTokens.*/ServerTokens Prod/' /etc/apache2/conf-enabled/security.conf \
     && sed -i 's/^ServerSignature.*/ServerSignature Off/' /etc/apache2/conf-enabled/security.conf \
     && echo 'SecServerSignature " "' > /etc/apache2/conf-enabled/custom.conf \
-    && mkdir /var/run/apache2 /var/lock/apache2 || true \
+    && mkdir -p /var/run/apache2 /var/lock/apache2 /var/www/html || true \
     && echo ok > /var/www/html/index.html \
     && chgrp -R 0 /var/log/apache2 /var/run/apache2 /var/lock/apache2 /var/www/html \
     && chmod -R g=u,o= /var/log/apache2 /var/run/apache2 /var/lock/apache2 /var/www/html \

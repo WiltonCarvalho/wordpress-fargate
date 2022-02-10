@@ -1,0 +1,35 @@
+AWS_ACCOUNT_ID=$(aws --profile dev sts get-caller-identity --query Account --output text)
+cat <<EOF> /tmp/task-arm.json
+{
+  "family": "task-arm",
+  "executionRoleArn": "arn:aws:iam::$AWS_ACCOUNT_ID:role/EcsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::$AWS_ACCOUNT_ID:role/EcsTaskRole",
+  "networkMode": "awsvpc",
+  "containerDefinitions": [
+    {
+      "name": "task-arm",
+      "image": "nginx:stable",
+      "memory": 128,
+      "memoryReservation": 128,
+      "essential": true,
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/task-arm",
+          "awslogs-region": "sa-east-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ],
+  "requiresCompatibilities": [ "FARGATE" ],
+  "cpu": "256",
+  "memory": "512",
+  "runtimePlatform": {
+    "operatingSystemFamily": "LINUX",
+    "cpuArchitecture": "ARM64"
+  }
+}
+EOF
+aws --profile dev logs create-log-group --log-group-name /ecs/task-arm --region sa-east-1
+aws --profile dev ecs register-task-definition --family task-arm --cli-input-json file:///tmp/task-arm.json --no-cli-pager
